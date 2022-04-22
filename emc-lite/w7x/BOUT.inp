@@ -1,0 +1,40 @@
+#
+# EMC-lite test case
+#
+
+timestep = 1e-2   # Output timestep
+nout = 400      # Number of output steps
+
+MYG = 1
+MXG = 2 
+grid = "W7-X.fci.nc"
+
+NXPE=1
+
+[mesh]
+symmetricGlobalX = true
+
+[input]
+error_on_unused_options=false
+
+[mesh:paralleltransform]
+type = fci
+
+[solver]
+rtol= 1.0e-10  # absolute tolerance
+atol = 1.0e-5   # relative tolerance
+mxstep = 1000000  # Maximum internal steps per output
+cvode_max_order = 2
+cvode_stability_limit_detection = true
+
+[emc-lite]
+parallel_sheaths = false
+chi = 1.5
+
+[all]
+scale = 0.0
+bndry_all = neumann_o2
+
+[T]
+scale=20
+function = gauss(x+0.2, 0.42)
