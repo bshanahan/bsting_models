@@ -13,3 +13,4 @@ cmake_install.cmake
 *.nc
 BOUT.log.*
 BOUT.settings
+emc-lite

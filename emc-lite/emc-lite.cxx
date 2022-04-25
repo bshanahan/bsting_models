@@ -14,7 +14,11 @@ private:
   BoutReal Te, kappa_epar, kappa_e0;
   Field3D chin; // cached chi * n
   Field3D sheath_dT;
-  BoutReal Nt, Cs, Tt, sheath_gamma;
+  BoutReal Nt, Cs0, Tt, sheath_gamma;
+  BoutReal q;
+  bool parallel_sheaths;
+  Coordinates *coord;
+
 protected:
 
   void check_all(Field3D &f) {
@@ -45,14 +49,16 @@ protected:
     kappa_e0 = options["kappa_e0"].doc("parallel conduction coefficient").withDefault(1.0);
     kappa_epar = kappa_e0 * pow(Te, 5 / 2);
 
-    bool parallel_sheaths = options["parallel_sheaths"].doc("parallel boundary conditions").withDefault(false);
+    parallel_sheaths = options["parallel_sheaths"]
+                           .doc("parallel boundary conditions")
+                           .withDefault(false);
     Nt = options["Nt"].doc("Density at target").withDefault(1.0);
     Tt = options["Tt"].doc("Temperature at target").withDefault(20.0);
-    Cs = options["Cs"].doc("Sound speed").withDefault(1.0);
+    Cs0 = options["Cs"].doc("Sound speed").withDefault(1.0);
     sheath_gamma = options["sheath_gamma"].doc("Sheath Gamma").withDefault(5.5);
 
     // Heat flux
-    BoutReal q = sheath_gamma * Tt * Nt * Cs;
+    q = sheath_gamma * Tt * Nt * Cs0;
 
     // Tell BOUT++ to solve T
     SOLVE_FOR(T);
@@ -62,7 +68,7 @@ protected:
     mesh->communicate(chin); // Communicate guard cells
     chin.applyParallelBoundary("parallel_neumann");
 
-    Coordinates *coord = mesh->getCoordinates();
+    coord = mesh->getCoordinates();
     mesh->communicate(coord->g23, coord->g_23, coord->dy, coord->dz, coord->Bxy,
                       coord->J);
 
@@ -88,13 +94,15 @@ protected:
     ddt(T) += FV::Div_a_Laplace_perp(chin, T);
 
     if (parallel_sheaths) {
-      for (const auto &bndry_par : mesh->getBoundariesPar(Mesh::BoundaryParType::xout)) {
-	// Sound speed (normalised units)
-	BoutReal Cs *=bndry_par->dir; //* sqrt(tesheath + tisheath);
+      for (const auto &bndry_par :
+           mesh->getBoundariesPar(BoundaryParType::xout)) {
+        // Sound speed (normalised units)
+        BoutReal Cs = Cs0 * bndry_par->dir; //* sqrt(tesheath + tisheath);
 
-	for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
+        for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
 	  int x = bndry_par->x; int y = bndry_par->y; int z = bndry_par->z;
-	  // Temperature and density at the sheath entrance	  
+
+          // Temperature and density at the sheath entrance	  
 	  // Multiply by cell area to get power
 	  BoutReal flux =
 	    q
