@@ -98,27 +98,29 @@ protected:
     // sheath boundary condition
     if (parallel_sheaths) {
       sheath_dT = 0;
+      const int ny = mesh->LocalNy;
+      const int nz = mesh->LocalNz;
+
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
         // Sound speed (normalised units)
         BoutReal Cs = Cs0 * bndry_par->dir; //* sqrt(tesheath + tisheath);
 
+        const auto &g_22_next = coord->g_22.ynext(bndry_par->dir);
+        const auto &J_next = coord->J.ynext(bndry_par->dir);
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-	  int x = bndry_par->x; int y = bndry_par->y; int z = bndry_par->z;
+          const Ind3D i{(bndry_par->x * ny + bndry_par->y) * nz + bndry_par->z,
+                        ny, nz};
+          const Ind3D inext = i.yp(bndry_par->dir);
 
           // Temperature and density at the sheath entrance	  
 	  // Multiply by cell area to get power
-	  BoutReal flux =
-	    q
-	    * (coord->J(x, y, z) + coord->J.ynext(bndry_par->dir)(x, y + bndry_par->dir, z))
-	    / (sqrt(coord->g_22(x, y, z))
-	       + sqrt(coord->g_22.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)));
-	  	  // Divide by volume of cell, and 2/3 to get pressure
-	  BoutReal power =
-	    flux
-	    / (coord->dy(x, y, z) * coord->J(x, y, z));
-	  sheath_dT(x, y, z) -= power;
-	}
+          BoutReal flux = q * (coord->J[i] + J_next[inext]) /
+                          (sqrt(coord->g_22[i]) + sqrt(g_22_next[inext]));
+          // Divide by volume of cell
+          BoutReal power = flux / (coord->dy[i] * coord->J[i]);
+          sheath_dT[i] -= power;
+        }
       }
       ddt(T) += sheath_dT;
     }
