@@ -89,11 +89,15 @@ protected:
 
     mesh->communicate(T);
     T.applyParallelBoundary("parallel_neumann");
-    ddt(T) = Div_par_K_Grad_par(
-        kappa_epar, T); // Parallel diffusion Div_{||}( chi * Grad_{||}(T) )
+
+    // Parallel diffusion Div_{||}( chi * Grad_{||}(T) )
+    ddt(T) = Div_par_K_Grad_par(kappa_epar, T);
+    // Perpendicular diffusion ∇⊥ ( χ ⋅ ∇⊥(T) )
     ddt(T) += FV::Div_a_Laplace_perp(chin, T);
 
+    // sheath boundary condition
     if (parallel_sheaths) {
+      sheath_dT = 0;
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
         // Sound speed (normalised units)
@@ -118,7 +122,7 @@ protected:
       }
       ddt(T) += sheath_dT;
     }
-     
+
     return 0;
   }
   
