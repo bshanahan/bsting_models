@@ -69,13 +69,13 @@ protected:
     chin.applyParallelBoundary("parallel_neumann");
 
     coord = mesh->getCoordinates();
-    mesh->communicate(coord->g23, coord->g_23, coord->dy, coord->dz, coord->Bxy,
-                      coord->J);
+    mesh->communicate(coord->g23, coord->g_23, coord->g_22, coord->dy,
+                      coord->dz, coord->Bxy, coord->J);
 
     coord->dz.applyParallelBoundary("parallel_neumann");
     coord->dy.applyParallelBoundary("parallel_neumann");
     coord->J.applyParallelBoundary("parallel_neumann");
-    // coord->g_22.applyParallelBoundary("parallel_neumann");
+    coord->g_22.applyParallelBoundary("parallel_neumann");
     coord->g_23.applyParallelBoundary("parallel_neumann");
     coord->g23.applyParallelBoundary("parallel_neumann");
     coord->Bxy.applyParallelBoundary("parallel_neumann");
@@ -104,7 +104,7 @@ protected:
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
         // Sound speed (normalised units)
-        BoutReal Cs = Cs0 * bndry_par->dir; //* sqrt(tesheath + tisheath);
+        BoutReal Cs = Cs0 * bndry_par->dir;
 
         const auto &g_22_next = coord->g_22.ynext(bndry_par->dir);
         const auto &J_next = coord->J.ynext(bndry_par->dir);
