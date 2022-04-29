@@ -1,0 +1,16 @@
+# cmake
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+
+# temporary files
+.*
+\#*
+*~
+
+# BOUT++ generated
+*.nc
+BOUT.log.*
+BOUT.settings
+emc-lite
