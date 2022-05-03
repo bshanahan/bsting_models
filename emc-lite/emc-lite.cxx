@@ -54,7 +54,7 @@ protected:
                            .withDefault(false);
     Nt = options["Nt"].doc("Density at target").withDefault(1.0);
     Tt = options["Tt"].doc("Temperature at target").withDefault(20.0);
-    Cs0 = options["Cs"].doc("Sound speed").withDefault(1.0);
+    Cs0 = options["Cs0"].doc("Sound speed").withDefault(1.0);
     sheath_gamma = options["sheath_gamma"].doc("Sheath Gamma").withDefault(5.5);
 
     // Heat flux
@@ -69,13 +69,13 @@ protected:
     chin.applyParallelBoundary("parallel_neumann");
 
     coord = mesh->getCoordinates();
-    mesh->communicate(coord->g23, coord->g_23, coord->dy, coord->dz, coord->Bxy,
-                      coord->J);
+    mesh->communicate(coord->g23, coord->g_23, coord->g_22, coord->dy,
+                      coord->dz, coord->Bxy, coord->J);
 
     coord->dz.applyParallelBoundary("parallel_neumann");
     coord->dy.applyParallelBoundary("parallel_neumann");
     coord->J.applyParallelBoundary("parallel_neumann");
-    // coord->g_22.applyParallelBoundary("parallel_neumann");
+    coord->g_22.applyParallelBoundary("parallel_neumann");
     coord->g_23.applyParallelBoundary("parallel_neumann");
     coord->g23.applyParallelBoundary("parallel_neumann");
     coord->Bxy.applyParallelBoundary("parallel_neumann");
@@ -89,36 +89,42 @@ protected:
 
     mesh->communicate(T);
     T.applyParallelBoundary("parallel_neumann");
-    ddt(T) = Div_par_K_Grad_par(
-        kappa_epar, T); // Parallel diffusion Div_{||}( chi * Grad_{||}(T) )
+
+    // Parallel diffusion Div_{||}( chi * Grad_{||}(T) )
+    ddt(T) = Div_par_K_Grad_par(kappa_epar, T);
+    // Perpendicular diffusion ∇⊥ ( χ ⋅ ∇⊥(T) )
     ddt(T) += FV::Div_a_Laplace_perp(chin, T);
 
+    // sheath boundary condition
     if (parallel_sheaths) {
+      sheath_dT = 0;
+      const int ny = mesh->LocalNy;
+      const int nz = mesh->LocalNz;
+
       for (const auto &bndry_par :
            mesh->getBoundariesPar(BoundaryParType::xout)) {
         // Sound speed (normalised units)
-        BoutReal Cs = Cs0 * bndry_par->dir; //* sqrt(tesheath + tisheath);
+        BoutReal Cs = Cs0 * bndry_par->dir;
 
+        const auto &g_22_next = coord->g_22.ynext(bndry_par->dir);
+        const auto &J_next = coord->J.ynext(bndry_par->dir);
         for (bndry_par->first(); !bndry_par->isDone(); bndry_par->next()) {
-	  int x = bndry_par->x; int y = bndry_par->y; int z = bndry_par->z;
+          const Ind3D i{(bndry_par->x * ny + bndry_par->y) * nz + bndry_par->z,
+                        ny, nz};
+          const Ind3D inext = i.yp(bndry_par->dir);
 
           // Temperature and density at the sheath entrance	  
 	  // Multiply by cell area to get power
-	  BoutReal flux =
-	    q
-	    * (coord->J(x, y, z) + coord->J.ynext(bndry_par->dir)(x, y + bndry_par->dir, z))
-	    / (sqrt(coord->g_22(x, y, z))
-	       + sqrt(coord->g_22.ynext(bndry_par->dir)(x, y + bndry_par->dir, z)));
-	  	  // Divide by volume of cell, and 2/3 to get pressure
-	  BoutReal power =
-	    flux
-	    / (coord->dy(x, y, z) * coord->J(x, y, z));
-	  sheath_dT(x, y, z) -= power;
-	}
+          BoutReal flux = q * (coord->J[i] + J_next[inext]) /
+                          (sqrt(coord->g_22[i]) + sqrt(g_22_next[inext]));
+          // Divide by volume of cell
+          BoutReal power = flux / (coord->dy[i] * coord->J[i]);
+          sheath_dT[i] -= power;
+        }
       }
       ddt(T) += sheath_dT;
     }
-     
+
     return 0;
   }
   

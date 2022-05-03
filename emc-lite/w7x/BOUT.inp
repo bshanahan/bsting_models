@@ -7,7 +7,7 @@ nout = 400      # Number of output steps
 
 MYG = 1
 MXG = 2 
-grid = "W7-X.fci.nc"
+grid = "grids/W7X-conf4-36x16x128.fci.f2.nc"
 
 NXPE=1
 
@@ -15,7 +15,7 @@ NXPE=1
 symmetricGlobalX = true
 
 [input]
-error_on_unused_options=false
+error_on_unused_options = false
 
 [mesh:paralleltransform]
 type = fci
@@ -36,5 +36,5 @@ scale = 0.0
 bndry_all = neumann_o2
 
 [T]
-scale=20
+scale = 20
 function = gauss(x+0.2, 0.42)
