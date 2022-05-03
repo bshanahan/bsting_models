@@ -54,7 +54,7 @@ protected:
                            .withDefault(false);
     Nt = options["Nt"].doc("Density at target").withDefault(1.0);
     Tt = options["Tt"].doc("Temperature at target").withDefault(20.0);
-    Cs0 = options["Cs"].doc("Sound speed").withDefault(1.0);
+    Cs0 = options["Cs0"].doc("Sound speed").withDefault(1.0);
     sheath_gamma = options["sheath_gamma"].doc("Sheath Gamma").withDefault(5.5);
 
     // Heat flux
